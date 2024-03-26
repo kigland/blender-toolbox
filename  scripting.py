@@ -147,11 +147,21 @@ class UIGenLogo(bpy.types.Panel):
 
         # if in edit mode, show the active vertex location
         if bpy.context.mode == 'EDIT_MESH':
-            row = layout.row()
-            row.operator(OpShowActiveVertexLocation.bl_idname)
+            
+            obj = bpy.context.edit_object
+            me = obj.data
+            bm = bmesh.from_edit_mesh(me)
 
-            row = layout.row()
-            row.operator(OpShowAverageLocationOfSelectedVerts.bl_idname)
+            selected_verts = [v for v in bm.verts if v.select]
+            # active_vert = 
+            # bm.select_history.active if hasattr(bm.select_history, 'active') else None
+
+            if len(selected_verts) > 1:
+                row = layout.row()
+                row.operator(OpShowAverageLocationOfSelectedVerts.bl_idname)
+            else:    
+                row = layout.row()
+                row.operator(OpShowActiveVertexLocation.bl_idname)
 
 
 def register():
