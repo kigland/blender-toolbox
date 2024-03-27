@@ -11,35 +11,16 @@ class PropsTextOrderId(bpy.types.PropertyGroup):
     user_input_order_id: bpy.props.StringProperty(
         name="Order ID",
         description="For Order ID",
-        default="XXXXXXXX"
+        default="AXX-ORDERID"
     )
     text_order_id: bpy.props.StringProperty(
         name="Text Order ID",
-        default="XXXXXXXX"
+        default="AXX-ORDERID"
     )
-
-
-class OpGenOrderIdLabel(bpy.types.Operator):
-    bl_idname = "text.gen_order_id_label"
-    bl_label = "Gen OrderID Label"
-
-    def execute(self, context):
-        scene = context.scene
-        text_tool = scene.text_tool
-
-        # Check if the text object exists
-        text_obj = bpy.data.objects.get(text_tool.text_order_id)
-        if text_obj is None:
-            # Create a new text object
-            font_curve = bpy.data.curves.new(type='FONT', name='Font Curve')
-            text_obj = bpy.data.objects.new(
-                text_tool.text_order_id, font_curve)
-            context.collection.objects.link(text_obj)
-
-        # Update the text
-        text_obj.data.body = f'KIG.LAND\nKIGURUMI\n{text_tool.user_input_order_id}'
-
-        return {'FINISHED'}
+    gen_full_order_id_label: bpy.props.BoolProperty(
+        name="Gen Full Order ID Label",
+        default=False
+    )
 
 
 def download_file_and_load(url, temp_dir, blend_filename):
@@ -174,6 +155,77 @@ class OpGenLogoAndMoveToSelectedVerteces(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class OpGenOrderIdLabel(bpy.types.Operator):
+    bl_idname = "text.gen_order_id_label"
+    bl_label = "Gen OrderID Label"
+
+    def execute(self, context):
+        scene = context.scene
+        text_tool = scene.text_tool
+
+        # Create a new text object
+        font_curve = bpy.data.curves.new(type='FONT', name='Font Curve')
+        text_obj = bpy.data.objects.new(
+            "label.order", font_curve)
+        context.collection.objects.link(text_obj)
+
+        if text_tool.gen_full_order_id_label:
+            text_obj.data.body = f'KIG.LAND\nKIGURUMI\n{text_tool.user_input_order_id}'
+        else:
+            text_obj.data.body = f'{text_tool.user_input_order_id}'
+
+        # Update the scene to calculate dimensions
+        bpy.context.view_layer.update()
+
+        # Resize the text object to have a width of 1.5
+        text_height = text_obj.dimensions.y
+        target_height = 0
+
+        if text_tool.gen_full_order_id_label:
+            target_height = 10
+        else:
+            target_height = 3
+
+        scale_factor = target_height / text_height
+        text_obj.scale = (scale_factor, scale_factor, scale_factor)
+        
+        world_center = world_normal = None
+        
+        try:
+            (world_center, world_normal) = get_selected_face_center_and_normal()
+            pass
+        except:
+            self.report({'ERROR'}, "If your need move it, plz use it in editor mode")
+        
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Clean active object
+        for obj in bpy.context.view_layer.objects:
+            obj.select_set(False)
+        
+        text_obj.select_set(True)
+        context.view_layer.objects.active = text_obj
+        bpy.ops.object.convert(target='MESH')
+        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.extrude_region_move( # extrude_amount
+            TRANSFORM_OT_translate={"value": (0, 0, 2)}) 
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        bpy.ops.object.transform_apply(
+            location=False, rotation=False, scale=True)
+
+        if world_center is None:
+            return {'FINISHED'}
+        else:
+            text_obj.location = world_center
+            align_quat = Vector((0, 0, 1)).rotation_difference(world_normal)
+            text_obj.rotation_euler = align_quat.to_euler()
+            return {'FINISHED'}
+
+
 class OpGenLockComponents(bpy.types.Operator):
     bl_idname = "object.gen_lock_components"
     bl_label = "Gen NRH Lock "
@@ -233,11 +285,15 @@ class UIGenLogo(bpy.types.Panel):
         row = layout.row()
         row.operator(OpGenLockComponents.bl_idname)
 
+        # Order ID
         row = layout.row()
         row.label(text="OrderId Part", icon='INFO')
 
         row = layout.row()
         row.prop(context.scene.text_tool, "user_input_order_id")
+
+        row = layout.row()
+        row.prop(context.scene.text_tool, "gen_full_order_id_label")
 
         row = layout.row()
         row.operator(OpGenOrderIdLabel.bl_idname)
@@ -313,4 +369,4 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-    # unregister()
+    #unregister()
