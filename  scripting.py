@@ -310,13 +310,13 @@ class UIGenLogo(bpy.types.Panel):
         
         # Env settings
         row = layout.row()
-        row.label(text="Env init", icon='INFO')
+        row.label(text="Env init", icon='OPTIONS')
         
         row = layout.row()
         row.operator(OpInitEnvUnitSettings.bl_idname)
         
         row = layout.row()
-        row.label(text="Components", icon='INFO')
+        row.label(text="Components", icon='MESH_MONKEY')
 
         row = layout.row()
         row.operator(OpGenLogo.bl_idname)
@@ -329,7 +329,7 @@ class UIGenLogo(bpy.types.Panel):
 
         # Order ID
         row = layout.row()
-        row.label(text="Order Id about", icon='INFO')
+        row.label(text="Order Id about", icon='LINENUMBERS_ON')
 
         row = layout.row()
         row.prop(context.scene.text_tool, "user_input_order_id")
@@ -352,7 +352,7 @@ class UIGenLogo(bpy.types.Panel):
 
             if len(selected_verts) > 1:
                 row = layout.row()
-                row.label(text="On Selected multiple vertices", icon='INFO')
+                row.label(text="On Selected multiple vertices", icon='OUTLINER_DATA_MESH')
 
                 row = layout.row()
                 row.operator(OpShowAverageLocationOfSelectedVerts.bl_idname)
@@ -360,14 +360,14 @@ class UIGenLogo(bpy.types.Panel):
                 if len(selected_faces) > 0:
 
                     row = layout.row()
-                    row.label(text="On Selected Face", icon='INFO')
+                    row.label(text="On Selected Face", icon='FACE_MAPS')
 
                     row = layout.row()
                     row.operator(OpGenLogoAndMoveToSelectedVerteces.bl_idname)
 
             if len(selected_verts) == 1:
                 row = layout.row()
-                row.label(text="On Selected single vertex", icon='INFO')
+                row.label(text="On Selected single vertex", icon='DECORATE')
 
                 row = layout.row()
                 row.operator(OpShowActiveVertexLocation.bl_idname)
@@ -375,7 +375,7 @@ class UIGenLogo(bpy.types.Panel):
         # Head model
         
         row = layout.row()
-        row.label(text="Head Model", icon='INFO')
+        row.label(text="Head Model", icon='GHOST_ENABLED')
         
         
 
