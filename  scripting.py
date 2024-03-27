@@ -225,11 +225,10 @@ class OpGenOrderIdLabel(bpy.types.Operator):
         
         try:
             (world_center, world_normal) = get_selected_face_center_and_normal()
+            bpy.ops.object.mode_set(mode='OBJECT')
             pass
         except:
-            self.report({'ERROR'}, "If your need move it, plz use it in editor mode")
-        
-        bpy.ops.object.mode_set(mode='OBJECT')
+            self.report({'INFO'}, "If your need move it, plz use it in editor mode")
 
         # Clean active object
         for obj in bpy.context.view_layer.objects:
