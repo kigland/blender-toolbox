@@ -22,6 +22,9 @@ class PropsTextOrderId(bpy.types.PropertyGroup):
         default=False
     )
 
+# class PropsHeadModel(bpy.types.PropertyGroup):
+    
+
 
 def download_file_and_load(url, temp_dir, blend_filename):
     loaded_objects = []
@@ -89,6 +92,22 @@ def get_average_location_of_selected_verts():
 
     return avg_co
 
+class OpInitEnvUnitSettings(bpy.types.Operator):
+    bl_idname = "object.init_env_units"
+    bl_label = "Init Env Units"
+
+    def execute(self, context):
+        
+        scene = bpy.context.scene
+        unit_settings = scene.unit_settings
+        unit_settings.system = 'METRIC'
+        unit_settings.scale_length = 0.001
+        unit_settings.length_unit = 'MILLIMETERS'
+        unit_settings.mass_unit = 'KILOGRAMS'
+        unit_settings.time_unit = 'SECONDS'
+        
+        return {'FINISHED'}  
+    
 
 class OpGenLogo(bpy.types.Operator):
     bl_idname = "object.gen_kigland_logo"
@@ -101,6 +120,19 @@ class OpGenLogo(bpy.types.Operator):
             "logo.blend"
         )
         return {'FINISHED'}
+
+class OpGenEars(bpy.types.Operator):
+    bl_idname = "object.gen_kigland_ears"
+    bl_label = "Gen Ears"
+
+    def execute(self, context):
+        download_file_and_load(
+            f"{S3_BUCKET}/ears.blend",
+            bpy.app.tempdir,
+            "ears.blend"
+        )
+        return {'FINISHED'}
+    
 
 
 def calculate_average_normal(verts):
@@ -275,19 +307,29 @@ class UIGenLogo(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-
+        
+        # Env settings
+        row = layout.row()
+        row.label(text="Env init", icon='INFO')
+        
+        row = layout.row()
+        row.operator(OpInitEnvUnitSettings.bl_idname)
+        
         row = layout.row()
         row.label(text="Components", icon='INFO')
 
         row = layout.row()
         row.operator(OpGenLogo.bl_idname)
+        
+        row = layout.row()
+        row.operator(OpGenEars.bl_idname)
 
         row = layout.row()
         row.operator(OpGenLockComponents.bl_idname)
 
         # Order ID
         row = layout.row()
-        row.label(text="OrderId Part", icon='INFO')
+        row.label(text="Order Id about", icon='INFO')
 
         row = layout.row()
         row.prop(context.scene.text_tool, "user_input_order_id")
@@ -329,6 +371,13 @@ class UIGenLogo(bpy.types.Panel):
 
                 row = layout.row()
                 row.operator(OpShowActiveVertexLocation.bl_idname)
+        
+        # Head model
+        
+        row = layout.row()
+        row.label(text="Head Model", icon='INFO')
+        
+        
 
 
 def register():
@@ -338,7 +387,9 @@ def register():
         type=PropsTextOrderId)
 
     # operators
+    bpy.utils.register_class(OpInitEnvUnitSettings)
     bpy.utils.register_class(OpGenLogo)
+    bpy.utils.register_class(OpGenEars)
     bpy.utils.register_class(OpGenLockComponents)
     bpy.utils.register_class(OpShowActiveVertexLocation)
     bpy.utils.register_class(OpShowAverageLocationOfSelectedVerts)
@@ -357,7 +408,10 @@ def unregister():
     bpy.utils.unregister_class(OpGenLockComponents)
     bpy.utils.unregister_class(OpShowActiveVertexLocation)
     bpy.utils.unregister_class(OpShowAverageLocationOfSelectedVerts)
+    
+    bpy.utils.unregister_class(OpInitEnvUnitSettings)
     bpy.utils.unregister_class(OpGenLogo)
+    bpy.utils.unregister_class(OpGenEars)
     bpy.utils.unregister_class(OpGenLogoAndMoveToSelectedVerteces)
 
     bpy.utils.unregister_class(PropsTextOrderId)
