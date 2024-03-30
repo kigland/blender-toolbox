@@ -25,6 +25,43 @@ class PropsTextOrderId(bpy.types.PropertyGroup):
         default=False
     )
 
+class PropsRealHeadSizes(bpy.types.PropertyGroup):
+    head_height: bpy.props.FloatProperty(
+        name="Head Height",
+        default=230.0
+    )
+    
+    head_width: bpy.props.FloatProperty(
+        name="Head Width",
+        default=120.0
+    )
+
+    body_height: bpy.props.FloatProperty(
+        name="Body Height",
+        default=1680.0
+    )
+    
+    shoulder_width: bpy.props.FloatProperty(
+        name="Shoulder Width",
+        default=390.0
+    )
+    
+    eyes_height: bpy.props.FloatProperty(
+        name="Eyes Height",
+        default=120.0
+    )
+    
+    # NOTE: Bi-pupillary distance
+    eyes_width: bpy.props.FloatProperty(
+        name="Eyes Width",
+        default=70.0
+    )
+    padding_fill_thickness: bpy.props.FloatProperty(
+        name="Padding thickness",
+        default=35.0
+    )
+
+
 def download_file_and_load(url, temp_dir, blend_filename):
     loaded_objects = []
     temp_blend_path = os.path.join(temp_dir, blend_filename)
@@ -394,7 +431,28 @@ class UIGenLogo(bpy.types.Panel):
         
         # Head model
         row = layout.row()
-        row.label(text="Head Model", icon='GHOST_ENABLED')
+        row.label(text="Head Model (mm)", icon='COMMUNITY')
+        
+        row = layout.row()
+        row.prop(context.scene.head_data, "head_height")
+        
+        row = layout.row()
+        row.prop(context.scene.head_data, "head_width")
+
+        row = layout.row()
+        row.prop(context.scene.head_data, "body_height")
+        
+        row = layout.row()
+        row.prop(context.scene.head_data, "shoulder_width")
+        
+        row = layout.row()
+        row.prop(context.scene.head_data, "eyes_height")
+        
+        row = layout.row()
+        row.prop(context.scene.head_data, "eyes_width")
+        
+        row = layout.row()
+        row.prop(context.scene.head_data, "padding_fill_thickness")
         
         # Dangerous
         row = layout.row()
@@ -428,6 +486,7 @@ def register():
     auto_register_unregister_classes(blender_classes, register=True)
     
     # props
+    bpy.types.Scene.head_data = bpy.props.PointerProperty(type=PropsRealHeadSizes)
     bpy.types.Scene.text_tool = bpy.props.PointerProperty(type=PropsTextOrderId)
 
 def unregister():
@@ -436,7 +495,7 @@ def unregister():
 
     # props
     del bpy.types.Scene.text_tool
-
+    del bpy.types.Scene.head_data
 
 if __name__ == "__main__":
     register()
