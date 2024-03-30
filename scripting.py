@@ -377,6 +377,17 @@ class OpShowAverageLocationOfSelectedVerts(bpy.types.Operator):
             self.report({'ERROR'}, "No selected verts")
         return {'FINISHED'}
 
+def row_op(self, op_class):
+    row = self.layout.row()
+    row.operator(op_class.bl_idname)
+
+def row_label(self,text,icon):
+    row = self.layout.row()
+    row.label(text=text, icon=icon)
+
+def row_prop(self,context,id):
+    row = self.layout.row()
+    row.prop(context, id)
 
 class UIGenLogo(bpy.types.Panel):
     bl_label = "KigLand Toolbox"
@@ -386,39 +397,20 @@ class UIGenLogo(bpy.types.Panel):
     bl_category = 'KigLand Toolbox'
 
     def draw(self, context):
-        layout = self.layout
-        
         # Env settings
-        row = layout.row()
-        row.label(text="Env init", icon='OPTIONS')
+        row_label(self,"Env init","OPTIONS")
+        row_op(self,OpInitEnvUnitSettings)
         
-        row = layout.row()
-        row.operator(OpInitEnvUnitSettings.bl_idname)
-        
-        row = layout.row()
-        row.label(text="Components", icon='MESH_MONKEY')
-
-        row = layout.row()
-        row.operator(OpGenLogo.bl_idname)
-        
-        row = layout.row()
-        row.operator(OpGenEars.bl_idname)
-
-        row = layout.row()
-        row.operator(OpGenLockComponents.bl_idname)
+        row_label(self,"Components","MESH_MONKEY")
+        row_op(self,OpGenLogo)
+        row_op(self,OpGenEars)
+        row_op(self,OpGenLockComponents)
 
         # Order ID
-        row = layout.row()
-        row.label(text="Order Id", icon='LINENUMBERS_ON')
-
-        row = layout.row()
-        row.prop(context.scene.text_tool, "user_input_order_id")
-
-        row = layout.row()
-        row.prop(context.scene.text_tool, "gen_full_order_id_label")
-
-        row = layout.row()
-        row.operator(OpGenOrderIdLabel.bl_idname)
+        row_label(self,"Order Id","LINENUMBERS_ON")
+        row_prop(self,context.scene.text_tool,"user_input_order_id")
+        row_prop(self,context.scene.text_tool, "gen_full_order_id_label")
+        row_op(self,OpGenOrderIdLabel)
 
         # if in edit mode, show the active vertex location
         if bpy.context.mode == 'EDIT_MESH':
@@ -431,61 +423,33 @@ class UIGenLogo(bpy.types.Panel):
             selected_verts = [v for v in bm.verts if v.select]
 
             if len(selected_verts) > 1:
-                row = layout.row()
-                row.label(text="On Selected multiple vertices", icon='OUTLINER_DATA_MESH')
-
-                row = layout.row()
-                row.operator(OpShowAverageLocationOfSelectedVerts.bl_idname)
+                row_label(self,"On Selected multiple vertices","OUTLINER_DATA_MESH")
+                row_op(self,OpShowAverageLocationOfSelectedVerts)
 
                 if len(selected_faces) > 0:
-
-                    row = layout.row()
-                    row.label(text="On Selected Face", icon='FACE_MAPS')
-
-                    row = layout.row()
-                    row.operator(OpGenLogoAndMoveToSelectedVerteces.bl_idname)
+                    row_label(self,"On Selected Face","FACE_MAPS")
+                    row_op(self,OpGenLogoAndMoveToSelectedVerteces)
 
             if len(selected_verts) == 1:
-                row = layout.row()
-                row.label(text="On Selected single vertex", icon='DECORATE')
-
-                row = layout.row()
-                row.operator(OpShowActiveVertexLocation.bl_idname)
+                row_label(self,"On Selected single vertex","DECORATE")
+                row_op(OpShowActiveVertexLocation)
         
         # Head model
-        row = layout.row()
-        row.label(text="Head Model (mm)", icon='COMMUNITY')
-        
-        row = layout.row()
-        row.prop(context.scene.head_data, "head_height")
-        
-        row = layout.row()
-        row.prop(context.scene.head_data, "head_width")
-
-        row = layout.row()
-        row.prop(context.scene.head_data, "body_height")
-        
-        row = layout.row()
-        row.prop(context.scene.head_data, "shoulder_width")
-        
-        row = layout.row()
-        row.prop(context.scene.head_data, "eyes_height")
-        
-        row = layout.row()
-        row.prop(context.scene.head_data, "eyes_width")
-        
-        row = layout.row()
-        row.prop(context.scene.head_data, "padding_fill_thickness")
+        head_data = context.scene.head_data
+        row_label(self,"Head Model (mm)","COMMUNITY")
+        row_prop(self,head_data, "head_height")
+        row_prop(self,head_data, "head_width")
+        row_prop(self,head_data, "body_height")
+        row_prop(self,head_data, "shoulder_width")
+        row_prop(self,head_data, "eyes_height")
+        row_prop(self,head_data, "eyes_width")
+        row_prop(self,head_data, "padding_fill_thickness")
         
         # Dangerous
-        row = layout.row()
-        row.label(text="Dangerous", icon='ERROR')
-        
-        row = layout.row()
-        row.operator(OpRemoveObjectAllVertexGroups.bl_idname)
-        
-        row = layout.row()
-        row.operator(OpRemoveObjectAllShapeKeys.bl_idname)
+        row_label(self,"Dangerous","ERROR")
+        row_op(self,OpRemoveObjectAllVertexGroups)
+        row_op(self,OpRemoveObjectAllShapeKeys)
+        row_op(self,OpApplyShapekeys)
         
 
 blender_classes = (
@@ -534,3 +498,5 @@ if __name__ == "__main__":
         unregister()
     
     register()
+    
+    #unregister()
