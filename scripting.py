@@ -488,6 +488,8 @@ def register():
     # props
     bpy.types.Scene.head_data = bpy.props.PointerProperty(type=PropsRealHeadSizes)
     bpy.types.Scene.text_tool = bpy.props.PointerProperty(type=PropsTextOrderId)
+    
+    
 
 def unregister():
     # OP, UI
@@ -497,6 +499,15 @@ def unregister():
     del bpy.types.Scene.text_tool
     del bpy.types.Scene.head_data
 
+addon_name = __name__.partition('.')[0]
+
 if __name__ == "__main__":
+    
+    # in scripting mode
+    
     register()
-    # unregister()
+    
+    if addon_name in sys.modules:
+        unregister()
+    
+    register()
