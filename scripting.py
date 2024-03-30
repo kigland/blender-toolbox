@@ -3,6 +3,7 @@ import os
 import urllib.request
 import bmesh
 from mathutils import Vector
+import ssl
 
 S3_BUCKET = "https://s3.kigland.cn/blender"
 
@@ -22,33 +23,28 @@ class PropsTextOrderId(bpy.types.PropertyGroup):
         default=False
     )
 
-# class PropsHeadModel(bpy.types.PropertyGroup):
-    
-
-
 def download_file_and_load(url, temp_dir, blend_filename):
     loaded_objects = []
     temp_blend_path = os.path.join(temp_dir, blend_filename)
-    try:
-        with urllib.request.urlopen(url) as response:
-            with open(temp_blend_path, 'wb') as out_file:
-                out_file.write(response.read())
+    
+    # NOTE: WARNING it will not verify cert
+    context = ssl._create_unverified_context()
+    
+    with urllib.request.urlopen(url, context=context) as response:
+        with open(temp_blend_path, 'wb') as out_file:
+            out_file.write(response.read())
 
-        if os.path.exists(temp_blend_path):
-            with bpy.data.libraries.load(temp_blend_path, link=False) as (data_from, data_to):
-                data_to.objects = [name for name in data_from.objects if name]
+    if os.path.exists(temp_blend_path):
+        with bpy.data.libraries.load(temp_blend_path, link=False) as (data_from, data_to):
+            data_to.objects = [name for name in data_from.objects if name]
 
-            for obj in data_to.objects:
-                if obj is not None:
-                    bpy.context.collection.objects.link(obj)
-                    loaded_objects.append(obj)
-
-            print(f"Downloaded and loaded: {blend_filename}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
-        if os.path.exists(temp_blend_path):
-            os.remove(temp_blend_path)
+        for obj in data_to.objects:
+            if obj is not None:
+                bpy.context.collection.objects.link(obj)
+                loaded_objects.append(obj)
+    
+    if os.path.exists(temp_blend_path):
+        os.remove(temp_blend_path)
 
     return loaded_objects
 
