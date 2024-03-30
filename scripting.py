@@ -5,6 +5,7 @@ import urllib.request
 import bmesh
 from mathutils import Vector
 import ssl
+import sys
 
 S3_BUCKET = "https://s3.kigland.cn/blender"
 
@@ -348,7 +349,7 @@ class UIGenLogo(bpy.types.Panel):
 
         # Order ID
         row = layout.row()
-        row.label(text="Order Id about", icon='LINENUMBERS_ON')
+        row.label(text="Order Id", icon='LINENUMBERS_ON')
 
         row = layout.row()
         row.prop(context.scene.text_tool, "user_input_order_id")
@@ -406,48 +407,32 @@ class UIGenLogo(bpy.types.Panel):
         row.operator(OpRemoveObjectAllShapeKeys.bl_idname)
         
 
+blender_classes = (
+    bpy.types.Operator,
+    bpy.types.Panel,
+    bpy.types.PropertyGroup
+)
+
+def auto_register_unregister_classes(classes_to_check, register=True):
+    cls_members = inspect.getmembers(sys.modules[__name__], inspect.isclass)
+    for name, cls in cls_members:
+        if any(issubclass(cls, blender_class) for blender_class in classes_to_check):
+            if register:
+                bpy.utils.register_class(cls)
+            else:
+                bpy.utils.unregister_class(cls)
 
 def register():
-    # props
-    bpy.utils.register_class(PropsTextOrderId)
-    bpy.types.Scene.text_tool = bpy.props.PointerProperty(
-        type=PropsTextOrderId)
 
-    # operators
-    bpy.utils.register_class(OpInitEnvUnitSettings)
-    bpy.utils.register_class(OpGenLogo)
-    bpy.utils.register_class(OpGenEars)
-    bpy.utils.register_class(OpGenLockComponents)
-    bpy.utils.register_class(OpShowActiveVertexLocation)
-    bpy.utils.register_class(OpShowAverageLocationOfSelectedVerts)
-    bpy.utils.register_class(OpGenLogoAndMoveToSelectedVerteces)
-    bpy.utils.register_class(OpGenOrderIdLabel)
+    # OP, UI
+    auto_register_unregister_classes(blender_classes, register=True)
     
-    bpy.utils.register_class(OpRemoveObjectAllVertexGroups)
-    bpy.utils.register_class(OpRemoveObjectAllShapeKeys)
-
-    # panels
-    bpy.utils.register_class(UIGenLogo)
-
+    # props
+    bpy.types.Scene.text_tool = bpy.props.PointerProperty(type=PropsTextOrderId)
 
 def unregister():
-    # panels
-    bpy.utils.unregister_class(UIGenLogo)
-
-    # operators
-    bpy.utils.unregister_class(OpGenLockComponents)
-    bpy.utils.unregister_class(OpShowActiveVertexLocation)
-    bpy.utils.unregister_class(OpShowAverageLocationOfSelectedVerts)
-    
-    bpy.utils.unregister_class(OpInitEnvUnitSettings)
-    bpy.utils.unregister_class(OpGenLogo)
-    bpy.utils.unregister_class(OpGenEars)
-    bpy.utils.unregister_class(OpGenLogoAndMoveToSelectedVerteces)
-    bpy.utils.unregister_class(OpRemoveObjectAllShapeKeys)
-    bpy.utils.unregister_class(OpRemoveObjectAllVertexGroups)
-
-    bpy.utils.unregister_class(PropsTextOrderId)
-    bpy.utils.unregister_class(OpGenOrderIdLabel)
+    # OP, UI
+    auto_register_unregister_classes(blender_classes, register=False)
 
     # props
     del bpy.types.Scene.text_tool
@@ -455,4 +440,4 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-    #unregister()
+    # unregister()
