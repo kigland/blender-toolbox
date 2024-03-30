@@ -192,6 +192,29 @@ class OpRemoveObjectAllShapeKeys(bpy.types.Operator):
                 obj.shape_key_remove(key_block)
         return {'FINISHED'}
 
+class OpApplyShapekeys(bpy.types.Operator):
+    bl_idname = "object.apply_shape_keys"
+    bl_label = "Apply Shape Keys"
+    
+    def execute(self, context):
+        obj = bpy.context.active_object
+        if obj and obj.type == 'MESH' and obj.data.shape_keys:
+            shape_key_data = obj.data.shape_keys
+            key_blocks = shape_key_data.key_blocks
+            active_shape_key_index = obj.active_shape_key_index
+            
+            bpy.ops.object.shape_key_add(from_mix=True)
+            obj.active_shape_key_index = len(key_blocks)
+            
+            for i, key_block in reversed(list(enumerate(key_blocks))):
+                if i != active_shape_key_index:
+                    obj.active_shape_key_index = i
+                    bpy.ops.object.shape_key_remove(all=False)
+            for key_block in key_blocks:
+                obj.shape_key_remove(key_block)
+            self.report({'INFO'}, "Okay, you're free to use the modifier.")
+        
+        return {'FINISHED'}
 
 def calculate_average_normal(verts):
     normal_sum = Vector((0.0, 0.0, 0.0))
