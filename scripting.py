@@ -223,7 +223,7 @@ class OpGenOrderIdLabel(bpy.types.Operator):
             (world_center, world_normal) = get_selected_face_center_and_normal()
             bpy.ops.object.mode_set(mode='OBJECT')
             pass
-        except:
+        except:  # noqa: E722
             self.report({'INFO'}, "If your need move it, plz use it in editor mode")
 
         # Clean active object
