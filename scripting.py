@@ -1,4 +1,5 @@
 import bpy
+import inspect
 import os
 import urllib.request
 import bmesh
@@ -128,7 +129,30 @@ class OpGenEars(bpy.types.Operator):
             "ears.blend"
         )
         return {'FINISHED'}
-    
+
+
+class OpRemoveObjectAllVertexGroups(bpy.types.Operator):
+    bl_idname = "object.rm_mesh_vertex_groups"
+    bl_label = "Remove All Vertex Groups"
+
+    def execute(self, context):
+        obj = bpy.context.active_object
+        if obj and obj.type == 'MESH':
+            obj.vertex_groups.clear()
+        return {'FINISHED'}
+
+class OpRemoveObjectAllShapeKeys(bpy.types.Operator):
+    bl_idname = "object.rm_mesh_shape_keys"
+    bl_label = "Remove All shape keys"
+
+    def execute(self, context):
+        obj = bpy.context.active_object
+        if obj and obj.type == 'MESH' and obj.data.shape_keys:
+            shape_key_data = obj.data.shape_keys
+            key_blocks = shape_key_data.key_blocks
+            for key_block in key_blocks:
+                obj.shape_key_remove(key_block)
+        return {'FINISHED'}
 
 
 def calculate_average_normal(verts):
@@ -368,10 +392,18 @@ class UIGenLogo(bpy.types.Panel):
                 row.operator(OpShowActiveVertexLocation.bl_idname)
         
         # Head model
-        
         row = layout.row()
         row.label(text="Head Model", icon='GHOST_ENABLED')
         
+        # Dangerous
+        row = layout.row()
+        row.label(text="Dangerous", icon='ERROR')
+        
+        row = layout.row()
+        row.operator(OpRemoveObjectAllVertexGroups.bl_idname)
+        
+        row = layout.row()
+        row.operator(OpRemoveObjectAllShapeKeys.bl_idname)
         
 
 
@@ -390,6 +422,9 @@ def register():
     bpy.utils.register_class(OpShowAverageLocationOfSelectedVerts)
     bpy.utils.register_class(OpGenLogoAndMoveToSelectedVerteces)
     bpy.utils.register_class(OpGenOrderIdLabel)
+    
+    bpy.utils.register_class(OpRemoveObjectAllVertexGroups)
+    bpy.utils.register_class(OpRemoveObjectAllShapeKeys)
 
     # panels
     bpy.utils.register_class(UIGenLogo)
@@ -408,6 +443,8 @@ def unregister():
     bpy.utils.unregister_class(OpGenLogo)
     bpy.utils.unregister_class(OpGenEars)
     bpy.utils.unregister_class(OpGenLogoAndMoveToSelectedVerteces)
+    bpy.utils.unregister_class(OpRemoveObjectAllShapeKeys)
+    bpy.utils.unregister_class(OpRemoveObjectAllVertexGroups)
 
     bpy.utils.unregister_class(PropsTextOrderId)
     bpy.utils.unregister_class(OpGenOrderIdLabel)
