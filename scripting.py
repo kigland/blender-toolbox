@@ -81,8 +81,8 @@ class PropsRealHeadSizes(bpy.types.PropertyGroup):
     head_gen_scale_by: bpy.props.EnumProperty(
         name="Scale By",
         items=[
-            ('SCALE_BY_HEIGHT', "Scale By Height", "Scale head by real head height"),
-            ('SCALE_BY_WIDTH', "Scale By Width", "Scale head by real head width"),
+            ('SCALE_BY_HEIGHT', "Head Height", "Scale head by real head height"),
+            ('SCALE_BY_WIDTH', "Head Width", "Scale head by real head width"),
         ]
     )
 
@@ -205,6 +205,27 @@ class OpGenLogo(bpy.types.Operator):
             "logo.blend"
         )
         return {'FINISHED'}
+
+class OpGenGBTHead(bpy.types.Operator):
+    bl_idname = "object.gen_gbt_head"
+    bl_label = "Gen GB/T Head Model"
+    
+    def execute(self, context):
+        current_head = download_file_and_load(
+            f"{S3_BUCKET}/ref_head_a2.blend",
+            bpy.app.tempdir,
+            "ref_head_a2.blend"
+        )
+        
+        head_data = context.scene.head_data
+        scale_property = 'head_height' if head_data.head_gen_scale_by == 'SCALE_BY_HEIGHT' else 'head_width'
+        scale_target = getattr(head_data, scale_property)
+        scale_factor = scale_target / current_head[0].dimensions.z
+        
+        current_head[0].scale *= scale_factor
+        
+        return {'FINISHED'}
+    
 
 class OpGenEars(bpy.types.Operator):
     bl_idname = "object.gen_kigland_ears"
@@ -430,7 +451,6 @@ class UIInfoState(bpy.types.Panel):
     bl_category = 'KigLand Toolbox'
 
     def draw(self, context):
-        
         if bpy.context.mode == 'EDIT_MESH':
 
             obj = bpy.context.edit_object
