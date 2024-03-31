@@ -24,6 +24,9 @@ class PropsTextOrderId(bpy.types.PropertyGroup):
         name="Gen Full Order ID Label",
         default=False
     )
+    
+def poll_mesh_object(self, object):
+    return object.type == 'MESH'
 
 class PropsRealHeadSizes(bpy.types.PropertyGroup):
 
@@ -33,6 +36,24 @@ class PropsRealHeadSizes(bpy.types.PropertyGroup):
             ('TYPE_G', "TYPE_G", "Kig.land product TYPE_G"),
             ('TYPE_A', "TYPE_A", "Kig.land product TYPE_A"),
         ]
+    )
+    
+    kigurumi_object_type_g_fe: bpy.props.PointerProperty(
+        name="FE Object",
+        type=bpy.types.Object,
+        poll=poll_mesh_object
+    )
+    
+    kigurumi_object_type_g_be: bpy.props.PointerProperty(
+        name="BE Object",
+        type=bpy.types.Object,
+        poll=poll_mesh_object
+    )
+    
+    kigurumi_object_type_a: bpy.props.PointerProperty(
+        name="Object",
+        type=bpy.types.Object,
+        poll=poll_mesh_object
     )
     
     head_height: bpy.props.FloatProperty(
@@ -51,7 +72,7 @@ class PropsRealHeadSizes(bpy.types.PropertyGroup):
     )
     
     head_type_items = [('A{}'.format(i), 
-        "GB Std A{}".format(i), "Description A{}".format(i)) for i in range(2, 9)]
+        "GB/T Std A{}".format(i), "Description A{}".format(i)) for i in range(2, 9)]
     head_type: bpy.props.EnumProperty(
         name="GB Head",
         items=head_type_items
@@ -495,12 +516,44 @@ class UIBodyData(bpy.types.Panel):
         
         row_prop(self,head_data, "kigurumi_type")
         
+        if head_data.kigurumi_type == "TYPE_G":
+            #row_label(self,"All generator, need selected Object")
+            row_prop(self,head_data, "kigurumi_object_type_g_fe")
+            row_prop(self,head_data, "kigurumi_object_type_g_be")
+            
+            if (head_data.kigurumi_object_type_g_fe is None) or \
+                (head_data.kigurumi_object_type_g_be is None):
+                row_label(self,"Need select Kigurumi Object","SEQUENCE_COLOR_01")
+            else:
+                row_label(self,"Object Selected, plz make sure correct","SEQUENCE_COLOR_04")
+        
+        if head_data.kigurumi_type == "TYPE_A":
+            
+            row_prop(self,head_data, "kigurumi_object_type_a")
+            if (head_data.kigurumi_object_type_a is None):
+                row_label(self,"Need select Kigurumi Object","SEQUENCE_COLOR_01")
+            else:
+                row_label(self,"Object Selected, plz make sure correct","SEQUENCE_COLOR_04")
+            
+        # GB/T HEAD GENERATOR
         row_label(self,"Head (mm)","COMMUNITY")
         row_prop(self,head_data, "head_height")
         row_prop(self,head_data, "head_width")
         row_prop(self,head_data, "head_circumference")
+        
+        if (head_data.head_width < head_data.head_height < head_data.head_circumference) and\
+                head_data.head_width >= 120 and \
+                head_data.head_height >= 150 and \
+                head_data.head_circumference >= 500 and \
+                head_data.head_circumference <= 650:
+            row_label(self,"DATA CORRECT","SEQUENCE_COLOR_04")
+        else:
+            row_label(self,"WARNING DATA MAYBE INCORRECT","SEQUENCE_COLOR_01")
+        
         row_prop(self,head_data, "head_gen_scale_by")
         row_prop(self,head_data, "head_type")
+        
+        row_op(self,OpGenGBTHead)
         
         row_label(self,"Eyes (mm)","BLENDER")
         row_prop(self,head_data, "eyes_height")
