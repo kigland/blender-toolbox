@@ -26,6 +26,15 @@ class PropsTextOrderId(bpy.types.PropertyGroup):
     )
 
 class PropsRealHeadSizes(bpy.types.PropertyGroup):
+
+    kigurumi_type: bpy.props.EnumProperty(
+        name="Product",
+        items=[
+            ('TYPE_G', "TYPE_G", "Kig.land product TYPE_G"),
+            ('TYPE_A', "TYPE_A", "Kig.land product TYPE_A"),
+        ]
+    )
+    
     head_height: bpy.props.FloatProperty(
         name="Head Height",
         default=230.0
@@ -34,6 +43,26 @@ class PropsRealHeadSizes(bpy.types.PropertyGroup):
     head_width: bpy.props.FloatProperty(
         name="Head Width",
         default=120.0
+    )
+    
+    head_circumference: bpy.props.FloatProperty(
+        name="Head Circumference",
+        default=580.0
+    )
+    
+    head_type_items = [('A{}'.format(i), 
+        "GB Std A{}".format(i), "Description A{}".format(i)) for i in range(2, 9)]
+    head_type: bpy.props.EnumProperty(
+        name="GB Head",
+        items=head_type_items
+    )
+    
+    head_gen_scale_by: bpy.props.EnumProperty(
+        name="Scale By",
+        items=[
+            ('SCALE_BY_HEIGHT', "Scale By Height", "Scale head by real head height"),
+            ('SCALE_BY_WIDTH', "Scale By Width", "Scale head by real head width"),
+        ]
     )
 
     body_height: bpy.props.FloatProperty(
@@ -466,9 +495,14 @@ class UIBodyData(bpy.types.Panel):
         
         head_data = context.scene.head_data
         
+        row_prop(self,head_data, "kigurumi_type")
+        
         row_label(self,"Head (mm)","COMMUNITY")
         row_prop(self,head_data, "head_height")
         row_prop(self,head_data, "head_width")
+        row_prop(self,head_data, "head_circumference")
+        row_prop(self,head_data, "head_gen_scale_by")
+        row_prop(self,head_data, "head_type")
         
         row_label(self,"Eyes (mm)","BLENDER")
         row_prop(self,head_data, "eyes_height")
