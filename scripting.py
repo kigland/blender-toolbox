@@ -599,7 +599,7 @@ class UIBodyData(bpy.types.Panel):
         row_label(self, "Head (mm)", "COMMUNITY")
         row_prop(self, head_data, "head_height")
         row_prop(self, head_data, "head_width")
-        row_prop(self, head_data, "head_circumference")
+        #row_prop(self, head_data, "head_circumference")
 
         if (head_data.head_width < head_data.head_height < head_data.head_circumference) and\
                 head_data.head_width >= 120 and \
@@ -636,7 +636,7 @@ class UIBodyData(bpy.types.Panel):
         row_prop(self, head_data, "shoulder_width")
 
         if head_data.shoulder_width < 550 and \
-            head_data.shoulder_width > 450:
+            head_data.shoulder_width > 320:
             row_label(self, "SHOULDER CORRECT", "SEQUENCE_COLOR_04")
         else:
             row_label(self, "WARNING DATA MAYBE INCORRECT",
@@ -715,6 +715,7 @@ class UIDangerOp(bpy.types.Panel):
     bl_category = 'KigLand Toolbox'
 
     def draw(self, context):
+        layout = self.layout
 
         # Dangerous
         row_label(self, "Before apply Modifier", "ERROR")
