@@ -465,16 +465,32 @@ class UIBodyData(bpy.types.Panel):
         layout = self.layout
         
         head_data = context.scene.head_data
-
-        row_label(self,"Head Model (mm)","COMMUNITY")
+        
+        row_label(self,"Head (mm)","COMMUNITY")
         row_prop(self,head_data, "head_height")
         row_prop(self,head_data, "head_width")
-        row_prop(self,head_data, "body_height")
-        row_prop(self,head_data, "shoulder_width")
+        
+        row_label(self,"Eyes (mm)","BLENDER")
         row_prop(self,head_data, "eyes_height")
         row_prop(self,head_data, "eyes_width")
-        row_prop(self,head_data, "padding_fill_thickness")
         
+        row_label(self,"Body (mm)","MATCLOTH")
+        row_prop(self,head_data, "body_height")
+        row_prop(self,head_data, "shoulder_width")
+        
+        
+        row_label(self,"Suggestion Kigurumi Props","INFO")
+        
+        kig_width_low = (head_data.shoulder_width*0.53)
+        kig_width_max = (head_data.shoulder_width*0.57)
+        row_label(self,f"Width:  {kig_width_low:.2f} - {kig_width_max:.2f} mm")
+        row_label(self,f"Height (1/5.5): {head_data.body_height * (1/5.5):.2f} mm")
+        row_label(self,f"Height (1/6.0): {head_data.body_height * (1/6.0):.2f} mm")
+        row_label(self,f"Height (1/6.5): {head_data.body_height * (1/6.5):.2f} mm")
+        row_label(self,f"Height (1/7.0): {head_data.body_height * (1/7.0):.2f} mm")
+        
+        row_label(self,"Misc (mm)","OUTLINER_OB_CURVES")
+        row_prop(self,head_data, "padding_fill_thickness")
 
 class UIDangerOp(bpy.types.Panel):
     bl_label = "KigLand - Danger Op"
