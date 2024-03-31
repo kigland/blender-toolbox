@@ -7,6 +7,7 @@ from mathutils import Vector
 import ssl
 import sys
 
+
 S3_BUCKET = "https://s3.kigland.cn/blender"
 
 
@@ -24,9 +25,11 @@ class PropsTextOrderId(bpy.types.PropertyGroup):
         name="Gen Full Order ID Label",
         default=False
     )
-    
+
+
 def poll_mesh_object(self, object):
     return object.type == 'MESH'
+
 
 class PropsRealHeadSizes(bpy.types.PropertyGroup):
 
@@ -37,47 +40,47 @@ class PropsRealHeadSizes(bpy.types.PropertyGroup):
             ('TYPE_A', "TYPE_A", "Kig.land product TYPE_A"),
         ]
     )
-    
+
     kigurumi_object_type_g_fe: bpy.props.PointerProperty(
         name="FE Object",
         type=bpy.types.Object,
         poll=poll_mesh_object
     )
-    
+
     kigurumi_object_type_g_be: bpy.props.PointerProperty(
         name="BE Object",
         type=bpy.types.Object,
         poll=poll_mesh_object
     )
-    
+
     kigurumi_object_type_a: bpy.props.PointerProperty(
         name="Object",
         type=bpy.types.Object,
         poll=poll_mesh_object
     )
-    
+
     head_height: bpy.props.FloatProperty(
         name="Head Height",
         default=230.0
     )
-    
+
     head_width: bpy.props.FloatProperty(
         name="Head Width",
         default=120.0
     )
-    
+
     head_circumference: bpy.props.FloatProperty(
         name="Head Circumference",
         default=580.0
     )
-    
-    head_type_items = [('A{}'.format(i), 
-        "GB/T Std A{}".format(i), "Description A{}".format(i)) for i in range(2, 9)]
+
+    head_type_items = [('A{}'.format(i),
+                        "GB/T Std A{}".format(i), "Description A{}".format(i)) for i in range(2, 9)]
     head_type: bpy.props.EnumProperty(
         name="GB Head",
         items=head_type_items
     )
-    
+
     head_gen_scale_by: bpy.props.EnumProperty(
         name="Scale By",
         items=[
@@ -90,20 +93,20 @@ class PropsRealHeadSizes(bpy.types.PropertyGroup):
         name="Body Height",
         default=1680.0
     )
-    
+
     shoulder_width: bpy.props.FloatProperty(
         name="Shoulder Width",
         default=390.0
     )
-    
+
     eyes_height: bpy.props.FloatProperty(
         name="Eyes Height",
         default=120.0
     )
-    
+
     # NOTE: Bi-pupillary distance
-    eyes_width: bpy.props.FloatProperty(
-        name="Eyes Width",
+    eyes_spacing: bpy.props.FloatProperty(
+        name="Eyes Spacing",
         default=70.0
     )
     padding_fill_thickness: bpy.props.FloatProperty(
@@ -115,10 +118,10 @@ class PropsRealHeadSizes(bpy.types.PropertyGroup):
 def download_file_and_load(url, temp_dir, blend_filename):
     loaded_objects = []
     temp_blend_path = os.path.join(temp_dir, blend_filename)
-    
+
     # NOTE: WARNING it will not verify cert
     context = ssl._create_unverified_context()
-    
+
     with urllib.request.urlopen(url, context=context) as response:
         with open(temp_blend_path, 'wb') as out_file:
             out_file.write(response.read())
@@ -131,7 +134,7 @@ def download_file_and_load(url, temp_dir, blend_filename):
             if obj is not None:
                 bpy.context.collection.objects.link(obj)
                 loaded_objects.append(obj)
-    
+
     if os.path.exists(temp_blend_path):
         os.remove(temp_blend_path)
 
@@ -177,12 +180,13 @@ def get_average_location_of_selected_verts():
 
     return avg_co
 
+
 class OpInitEnvUnitSettings(bpy.types.Operator):
     bl_idname = "object.init_env_units"
     bl_label = "Init Env Units"
 
     def execute(self, context):
-        
+
         scene = bpy.context.scene
         unit_settings = scene.unit_settings
         unit_settings.system = 'METRIC'
@@ -190,9 +194,9 @@ class OpInitEnvUnitSettings(bpy.types.Operator):
         unit_settings.length_unit = 'MILLIMETERS'
         unit_settings.mass_unit = 'KILOGRAMS'
         unit_settings.time_unit = 'SECONDS'
-        
-        return {'FINISHED'}  
-    
+
+        return {'FINISHED'}
+
 
 class OpGenLogo(bpy.types.Operator):
     bl_idname = "object.gen_kigland_logo"
@@ -206,26 +210,51 @@ class OpGenLogo(bpy.types.Operator):
         )
         return {'FINISHED'}
 
+
 class OpGenGBTHead(bpy.types.Operator):
     bl_idname = "object.gen_gbt_head"
     bl_label = "Gen GB/T Head Model"
-    
+
     def execute(self, context):
         current_head = download_file_and_load(
             f"{S3_BUCKET}/ref_head_a2.blend",
             bpy.app.tempdir,
             "ref_head_a2.blend"
         )
-        
+
         head_data = context.scene.head_data
         scale_property = 'head_height' if head_data.head_gen_scale_by == 'SCALE_BY_HEIGHT' else 'head_width'
         scale_target = getattr(head_data, scale_property)
         scale_factor = scale_target / current_head[0].dimensions.z
-        
+
         current_head[0].scale *= scale_factor
+
+        return {'FINISHED'}
+
+
+class OpGenEyesHole(bpy.types.Operator):
+    bl_idname = "object.gen_eyes_hole"
+    bl_label = "Gen Eyes Hole"
+
+    def execute(self, context):
+        eye_hole = download_file_and_load(
+            f"{S3_BUCKET}/eye_hole.blend",
+            bpy.app.tempdir,
+            "eye_hole.blend"
+        )
+        head_data = context.scene.head_data
+        eye_spacing = head_data.eyes_spacing
+
+        eye_hole[0].location = (eye_spacing / 2, eye_hole[0].location.y, eye_hole[0].location.z)
+        
+        bpy.context.view_layer.objects.active = eye_hole[0]
+        bpy.ops.object.transform_apply(location=True)
+        
+        mirror_modifier = eye_hole[0].modifiers.new(name="Mirror", type='MIRROR')
+        mirror_modifier.use_axis[0] = True
         
         return {'FINISHED'}
-    
+
 
 class OpGenEars(bpy.types.Operator):
     bl_idname = "object.gen_kigland_ears"
@@ -250,6 +279,7 @@ class OpRemoveObjectAllVertexGroups(bpy.types.Operator):
             obj.vertex_groups.clear()
         return {'FINISHED'}
 
+
 class OpRemoveObjectAllShapeKeys(bpy.types.Operator):
     bl_idname = "object.rm_mesh_shape_keys"
     bl_label = "Remove All shape keys"
@@ -263,20 +293,21 @@ class OpRemoveObjectAllShapeKeys(bpy.types.Operator):
                 obj.shape_key_remove(key_block)
         return {'FINISHED'}
 
+
 class OpApplyShapekeys(bpy.types.Operator):
     bl_idname = "object.apply_shape_keys"
     bl_label = "Apply Shape Keys"
-    
+
     def execute(self, context):
         obj = bpy.context.active_object
         if obj and obj.type == 'MESH' and obj.data.shape_keys:
             shape_key_data = obj.data.shape_keys
             key_blocks = shape_key_data.key_blocks
             active_shape_key_index = obj.active_shape_key_index
-            
+
             bpy.ops.object.shape_key_add(from_mix=True)
             obj.active_shape_key_index = len(key_blocks)
-            
+
             for i, key_block in reversed(list(enumerate(key_blocks))):
                 if i != active_shape_key_index:
                     obj.active_shape_key_index = i
@@ -284,8 +315,9 @@ class OpApplyShapekeys(bpy.types.Operator):
             for key_block in key_blocks:
                 obj.shape_key_remove(key_block)
             self.report({'INFO'}, "Okay, you're free to use the modifier.")
-        
+
         return {'FINISHED'}
+
 
 def calculate_average_normal(verts):
     normal_sum = Vector((0.0, 0.0, 0.0))
@@ -372,20 +404,21 @@ class OpGenOrderIdLabel(bpy.types.Operator):
 
         scale_factor = target_height / text_height
         text_obj.scale = (scale_factor, scale_factor, scale_factor)
-        
+
         world_center = world_normal = None
-        
+
         try:
             (world_center, world_normal) = get_selected_face_center_and_normal()
             bpy.ops.object.mode_set(mode='OBJECT')
             pass
         except:  # noqa: E722
-            self.report({'INFO'}, "If your need move it, plz use it in editor mode")
+            self.report(
+                {'INFO'}, "If your need move it, plz use it in editor mode")
 
         # Clean active object
         for obj in bpy.context.view_layer.objects:
             obj.select_set(False)
-        
+
         text_obj.select_set(True)
         context.view_layer.objects.active = text_obj
         bpy.ops.object.convert(target='MESH')
@@ -393,8 +426,8 @@ class OpGenOrderIdLabel(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.extrude_region_move( # extrude_amount
-            TRANSFORM_OT_translate={"value": (0, 0, 2)}) 
+        bpy.ops.mesh.extrude_region_move(  # extrude_amount
+            TRANSFORM_OT_translate={"value": (0, 0, 2)})
         bpy.ops.object.mode_set(mode='OBJECT')
 
         bpy.ops.object.transform_apply(
@@ -422,15 +455,18 @@ class OpGenLockComponents(bpy.types.Operator):
         return {'FINISHED'}
 
 
-#OpApplyShapekeys
+# OpApplyShapekeys
 def row_op(self, op_class):
     self.layout.row().operator(op_class.bl_idname)
 
-def row_label(self,text,icon=None):
+
+def row_label(self, text, icon=None):
     self.layout.row().label(text=text, **({'icon': icon} if icon else {}))
 
-def row_prop(self,context,id):
+
+def row_prop(self, context, id):
     self.layout.row().prop(context, id)
+
 
 class UIEnv(bpy.types.Panel):
     bl_label = "KigLand - Env Unit"
@@ -440,8 +476,9 @@ class UIEnv(bpy.types.Panel):
     bl_category = 'KigLand Toolbox'
 
     def draw(self, context):
-        row_label(self,"Env init","OPTIONS")
-        row_op(self,OpInitEnvUnitSettings)
+        row_label(self, "Env init", "OPTIONS")
+        row_op(self, OpInitEnvUnitSettings)
+
 
 class UIInfoState(bpy.types.Panel):
     bl_label = "KigLand - Info State"
@@ -459,23 +496,23 @@ class UIInfoState(bpy.types.Panel):
 
             selected_faces = [f for f in bm.faces if f.select]
             selected_verts = [v for v in bm.verts if v.select]
-            
-            
+
             if len(selected_verts) > 1:
-                row_label(self,"Vertex info","PIVOT_CURSOR")
-                
-                if (loc := get_average_location_of_selected_verts()): 
+                row_label(self, "Vertex info", "PIVOT_CURSOR")
+
+                if (loc := get_average_location_of_selected_verts()):
                     row_label(self, f"Ave. loc: X:{loc.x:.2f}, Y:{loc.y:.2f}, Z:{loc.z:.2f}")
-            
-                #row_op(self,OpShowAverageLocationOfSelectedVerts)
+
+                # row_op(self,OpShowAverageLocationOfSelectedVerts)
 
                 if len(selected_faces) > 0:
                     pass
 
             if len(selected_verts) == 1:
-                row_label(self,"Vertex info","PIVOT_CURSOR")
+                row_label(self, "Vertex info", "PIVOT_CURSOR")
                 loc = get_active_vertex_location()
-                row_label(self,f"loc: X:{loc.x:.2f}, Y:{loc.y:.2f}, Z:{loc.z:.2f}")
+                row_label(self, f"loc: X:{loc.x:.2f}, Y:{loc.y:.2f}, Z:{loc.z:.2f}")
+
 
 class UIToolBox(bpy.types.Panel):
     bl_label = "KigLand - Components"
@@ -487,20 +524,18 @@ class UIToolBox(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        row_op(self,OpGenLogo)
-        row_op(self,OpGenEars)
-        row_op(self,OpGenLockComponents)
-        
+        row_op(self, OpGenLogo)
+        row_op(self, OpGenEars)
+        row_op(self, OpGenLockComponents)
+
         layout.separator()
         layout.separator()
 
         # Order ID
-        row_label(self,"Order Labels & Order Id","LINENUMBERS_ON")
-        row_prop(self,context.scene.text_tool,"user_input_order_id")
-        row_prop(self,context.scene.text_tool, "gen_full_order_id_label")
-        row_op(self,OpGenOrderIdLabel)
-        
-        
+        row_label(self, "Order Labels & Order Id", "LINENUMBERS_ON")
+        row_prop(self, context.scene.text_tool, "user_input_order_id")
+        row_prop(self, context.scene.text_tool, "gen_full_order_id_label")
+        row_op(self, OpGenOrderIdLabel)
 
         # if in edit mode, show the active vertex location
         if bpy.context.mode == 'EDIT_MESH':
@@ -511,16 +546,17 @@ class UIToolBox(bpy.types.Panel):
 
             selected_faces = [f for f in bm.faces if f.select]
             selected_verts = [v for v in bm.verts if v.select]
-            
+
             if len(selected_verts) > 1:
-                # 
+                #
                 if len(selected_faces) > 0:
-                    row_label(self,"On Selected Face","FACE_MAPS")
-                    row_op(self,OpGenLogoAndMoveToSelectedVerteces)
-                    row_op(self,OpGenOrderIdLabel)
+                    row_label(self, "On Selected Face", "FACE_MAPS")
+                    row_op(self, OpGenLogoAndMoveToSelectedVerteces)
+                    row_op(self, OpGenOrderIdLabel)
 
             if len(selected_verts) == 1:
                 pass
+
 
 class UIBodyData(bpy.types.Panel):
     bl_label = "KigLand - Body & Head"
@@ -528,74 +564,148 @@ class UIBodyData(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'KigLand Toolbox'
-    
+
     def draw(self, context):
         layout = self.layout
-        
+
         head_data = context.scene.head_data
-        
-        row_prop(self,head_data, "kigurumi_type")
-        
+        """
+        row_prop(self, head_data, "kigurumi_type")
+
         if head_data.kigurumi_type == "TYPE_G":
-            #row_label(self,"All generator, need selected Object")
-            row_prop(self,head_data, "kigurumi_object_type_g_fe")
-            row_prop(self,head_data, "kigurumi_object_type_g_be")
-            
+            # row_label(self,"All generator, need selected Object")
+            row_prop(self, head_data, "kigurumi_object_type_g_fe")
+            row_prop(self, head_data, "kigurumi_object_type_g_be")
+
             if (head_data.kigurumi_object_type_g_fe is None) or \
-                (head_data.kigurumi_object_type_g_be is None):
-                row_label(self,"Need select Kigurumi Object","SEQUENCE_COLOR_01")
+                    (head_data.kigurumi_object_type_g_be is None):
+                row_label(self, "Need select Kigurumi Object",
+                          "SEQUENCE_COLOR_01")
             else:
-                row_label(self,"Object Selected, plz make sure correct","SEQUENCE_COLOR_04")
-        
+                row_label(
+                    self, "Object Selected, plz make sure correct", "SEQUENCE_COLOR_04")
+
         if head_data.kigurumi_type == "TYPE_A":
-            
-            row_prop(self,head_data, "kigurumi_object_type_a")
+
+            row_prop(self, head_data, "kigurumi_object_type_a")
             if (head_data.kigurumi_object_type_a is None):
-                row_label(self,"Need select Kigurumi Object","SEQUENCE_COLOR_01")
+                row_label(self, "Need select Kigurumi Object",
+                          "SEQUENCE_COLOR_01")
             else:
-                row_label(self,"Object Selected, plz make sure correct","SEQUENCE_COLOR_04")
-            
+                row_label(
+                    self, "Object Selected, plz make sure correct", "SEQUENCE_COLOR_04")
+        """
         # GB/T HEAD GENERATOR
-        row_label(self,"Head (mm)","COMMUNITY")
-        row_prop(self,head_data, "head_height")
-        row_prop(self,head_data, "head_width")
-        row_prop(self,head_data, "head_circumference")
-        
+        row_label(self, "Head (mm)", "COMMUNITY")
+        row_prop(self, head_data, "head_height")
+        row_prop(self, head_data, "head_width")
+        row_prop(self, head_data, "head_circumference")
+
         if (head_data.head_width < head_data.head_height < head_data.head_circumference) and\
                 head_data.head_width >= 120 and \
                 head_data.head_height >= 150 and \
                 head_data.head_circumference >= 500 and \
                 head_data.head_circumference <= 650:
-            row_label(self,"DATA CORRECT","SEQUENCE_COLOR_04")
+            row_label(self, "DATA CORRECT", "SEQUENCE_COLOR_04")
         else:
-            row_label(self,"WARNING DATA MAYBE INCORRECT","SEQUENCE_COLOR_01")
+            row_label(self, "WARNING DATA MAYBE INCORRECT",
+                      "SEQUENCE_COLOR_01")
+
+        row_prop(self, head_data, "head_gen_scale_by")
+        # row_prop(self,head_data, "head_type")
+
+        row_op(self, OpGenGBTHead)
         
-        row_prop(self,head_data, "head_gen_scale_by")
-        row_prop(self,head_data, "head_type")
+        # about eye spacing
+        row_label(self, "Eyes (mm)", "BLENDER")
+
         
-        row_op(self,OpGenGBTHead)
+        # row_prop(self, head_data, "eyes_height")
+        row_prop(self, head_data, "eyes_spacing")
+        if head_data.eyes_spacing < head_data.head_width * 0.75 and\
+            head_data.eyes_spacing > head_data.head_width * 0.1:
+            row_label(self, "EYES SPACING CORRECT", "SEQUENCE_COLOR_04")
+        else:
+            row_label(self, "WARNING DATA MAYBE INCORRECT",
+                      "SEQUENCE_COLOR_01")
+            
+        row_op(self, OpGenEyesHole)
+
+        row_label(self, "Body (mm)", "MATCLOTH")
+        row_prop(self, head_data, "body_height")
+        row_prop(self, head_data, "shoulder_width")
+
+        if head_data.shoulder_width < 550 and \
+            head_data.shoulder_width > 450:
+            row_label(self, "SHOULDER CORRECT", "SEQUENCE_COLOR_04")
+        else:
+            row_label(self, "WARNING DATA MAYBE INCORRECT",
+                      "SEQUENCE_COLOR_01")
         
-        row_label(self,"Eyes (mm)","BLENDER")
-        row_prop(self,head_data, "eyes_height")
-        row_prop(self,head_data, "eyes_width")
-        
-        row_label(self,"Body (mm)","MATCLOTH")
-        row_prop(self,head_data, "body_height")
-        row_prop(self,head_data, "shoulder_width")
-        
-        
-        row_label(self,"Suggestion Kigurumi Props","INFO")
-        
+        # Suggestion Part
+        row_label(self, "Suggestion Kigurumi Props", "INFO")
+
         kig_width_low = (head_data.shoulder_width*0.53)
         kig_width_max = (head_data.shoulder_width*0.57)
-        row_label(self,f"Width:  {kig_width_low:.2f} - {kig_width_max:.2f} mm")
-        row_label(self,f"Height (1/5.5): {head_data.body_height * (1/5.5):.2f} mm")
-        row_label(self,f"Height (1/6.0): {head_data.body_height * (1/6.0):.2f} mm")
-        row_label(self,f"Height (1/6.5): {head_data.body_height * (1/6.5):.2f} mm")
-        row_label(self,f"Height (1/7.0): {head_data.body_height * (1/7.0):.2f} mm")
+        row_label(self, f"Width:  {kig_width_low:.2f} - {kig_width_max:.2f} mm")
+        row_label(
+            self, f"Height (1/5.5): {head_data.body_height * (1/5.5):.2f} mm")
+        row_label(
+            self, f"Height (1/6.0): {head_data.body_height * (1/6.0):.2f} mm")
+        row_label(
+            self, f"Height (1/6.5): {head_data.body_height * (1/6.5):.2f} mm")
+        row_label(
+            self, f"Height (1/7.0): {head_data.body_height * (1/7.0):.2f} mm")
         
-        row_label(self,"Misc (mm)","OUTLINER_OB_CURVES")
-        row_prop(self,head_data, "padding_fill_thickness")
+        # Calc 
+        
+        selected_objects = context.selected_objects
+        if not selected_objects:
+            layout.label(text="No objects selected.")
+            return
+
+        # Calculate the total bounding box
+        min_x, min_y, min_z = [float('inf')] * 3
+        max_x, max_y, max_z = [float('-inf')] * 3
+
+        for obj in selected_objects:
+            # We need to calculate the global position of the bounding box corners
+            for corner in obj.bound_box:
+                global_corner = obj.matrix_world @ Vector(corner)
+                min_x = min(min_x, global_corner.x)
+                min_y = min(min_y, global_corner.y)
+                min_z = min(min_z, global_corner.z)
+                max_x = max(max_x, global_corner.x)
+                max_y = max(max_y, global_corner.y)
+                max_z = max(max_z, global_corner.z)
+
+        total_width = max_x - min_x
+        total_depth = max_y - min_y
+        total_height = max_z - min_z
+
+        # Display the total bounding box dimensions
+        box = layout.box()
+        col = box.column()
+        
+        if total_width > kig_width_low and total_width < kig_width_max:
+            col.label(text=f"Width(X): {total_width:.2f} mm",icon='SEQUENCE_COLOR_04')
+        else:
+            col.label(text=f"Width(X): {total_width:.2f} mm",icon='SEQUENCE_COLOR_01')
+        col.label(text=f"Depth(Y): {total_depth:.2f} mm",icon='SEQUENCE_COLOR_09')
+        
+        kigurumi_height_min = head_data.body_height * (1/6.5)
+        kigurumi_height_max = head_data.body_height * (1/5.5)
+        
+        if total_height > kigurumi_height_min and total_height < kigurumi_height_max:
+            col.label(text=f"Height(Z): {total_height:.2f} mm",icon='SEQUENCE_COLOR_04')
+        else:
+            col.label(text=f"Height(Z): {total_height:.2f} mm",icon='SEQUENCE_COLOR_01')
+        
+            
+        # TODO: for calc the eyes hole positions
+        #row_label(self, "Misc (mm)", "OUTLINER_OB_CURVES")
+        #row_prop(self, head_data, "padding_fill_thickness")
+
 
 class UIDangerOp(bpy.types.Panel):
     bl_label = "KigLand - Danger Op"
@@ -603,22 +713,22 @@ class UIDangerOp(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'KigLand Toolbox'
-    
+
     def draw(self, context):
-        layout = self.layout
-        
+
         # Dangerous
-        row_label(self,"Before apply Modifier","ERROR")
-        row_op(self,OpRemoveObjectAllVertexGroups)
-        row_op(self,OpRemoveObjectAllShapeKeys)
-        row_op(self,OpApplyShapekeys)
-        
+        row_label(self, "Before apply Modifier", "ERROR")
+        row_op(self, OpRemoveObjectAllVertexGroups)
+        row_op(self, OpRemoveObjectAllShapeKeys)
+        row_op(self, OpApplyShapekeys)
+
 
 blender_classes = (
     bpy.types.Operator,
     bpy.types.Panel,
     bpy.types.PropertyGroup
 )
+
 
 def auto_register_unregister_classes(classes_to_check, register=True):
     cls_members = inspect.getmembers(sys.modules[__name__], inspect.isclass)
@@ -629,16 +739,18 @@ def auto_register_unregister_classes(classes_to_check, register=True):
             else:
                 bpy.utils.unregister_class(cls)
 
+
 def register():
 
     # OP, UI
     auto_register_unregister_classes(blender_classes, register=True)
-    
+
     # props
-    bpy.types.Scene.head_data = bpy.props.PointerProperty(type=PropsRealHeadSizes)
-    bpy.types.Scene.text_tool = bpy.props.PointerProperty(type=PropsTextOrderId)
-    
-    
+    bpy.types.Scene.head_data = bpy.props.PointerProperty(
+        type=PropsRealHeadSizes)
+    bpy.types.Scene.text_tool = bpy.props.PointerProperty(
+        type=PropsTextOrderId)
+
 
 def unregister():
     # OP, UI
@@ -648,17 +760,18 @@ def unregister():
     del bpy.types.Scene.text_tool
     del bpy.types.Scene.head_data
 
+
 addon_name = __name__.partition('.')[0]
 
 if __name__ == "__main__":
-    
+
     # in scripting mode
-    
+
     register()
-    
+
     if addon_name in sys.modules:
         unregister()
-    
+
     register()
-    
-    #unregister()
+
+    # unregister()
