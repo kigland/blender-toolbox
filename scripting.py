@@ -398,7 +398,6 @@ class UIEnv(bpy.types.Panel):
     bl_category = 'KigLand Toolbox'
 
     def draw(self, context):
-        layout = self.layout
         row_label(self,"Env init","OPTIONS")
         row_op(self,OpInitEnvUnitSettings)
 
@@ -410,7 +409,6 @@ class UIInfoState(bpy.types.Panel):
     bl_category = 'KigLand Toolbox'
 
     def draw(self, context):
-        layout = self.layout
         
         if bpy.context.mode == 'EDIT_MESH':
 
