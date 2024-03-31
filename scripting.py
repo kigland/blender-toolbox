@@ -351,66 +351,88 @@ class OpGenLockComponents(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class OpShowActiveVertexLocation(bpy.types.Operator):
-    bl_idname = "object.show_active_vertex_location"
-    bl_label = "Vertex Location"
-
-    def execute(self, context):
-        loc = get_active_vertex_location()
-        if loc is not None:
-            self.report({'INFO'}, f"Active vertex location: {loc}")
-        else:
-            self.report(
-                {'ERROR'}, "No active vertex selected or selected over single vertex")
-        return {'FINISHED'}
-
-
-class OpShowAverageLocationOfSelectedVerts(bpy.types.Operator):
-    bl_idname = "object.show_average_location_of_selected_verts"
-    bl_label = "Ave Loc of Act Verts"
-
-    def execute(self, context):
-        loc = get_average_location_of_selected_verts()
-        if loc is not None:
-            self.report({'INFO'}, f"Average location of selected verts: {loc}")
-        else:
-            self.report({'ERROR'}, "No selected verts")
-        return {'FINISHED'}
-
+#OpApplyShapekeys
 def row_op(self, op_class):
-    row = self.layout.row()
-    row.operator(op_class.bl_idname)
+    self.layout.row().operator(op_class.bl_idname)
 
-def row_label(self,text,icon):
-    row = self.layout.row()
-    row.label(text=text, icon=icon)
+def row_label(self,text,icon=None):
+    self.layout.row().label(text=text, **({'icon': icon} if icon else {}))
 
 def row_prop(self,context,id):
-    row = self.layout.row()
-    row.prop(context, id)
+    self.layout.row().prop(context, id)
 
-class UIGenLogo(bpy.types.Panel):
-    bl_label = "KigLand Toolbox"
+class UIEnv(bpy.types.Panel):
+    bl_label = "KigLand - Env Unit"
+    bl_idname = "OBJECT_PT_kigland_toolbox_env"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'KigLand Toolbox'
+
+    def draw(self, context):
+        layout = self.layout
+        row_label(self,"Env init","OPTIONS")
+        row_op(self,OpInitEnvUnitSettings)
+
+class UIInfoState(bpy.types.Panel):
+    bl_label = "KigLand - Info State"
+    bl_idname = "OBJECT_PT_kigland_toolbox_info"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'KigLand Toolbox'
+
+    def draw(self, context):
+        layout = self.layout
+        
+        if bpy.context.mode == 'EDIT_MESH':
+
+            obj = bpy.context.edit_object
+            me = obj.data
+            bm = bmesh.from_edit_mesh(me)
+
+            selected_faces = [f for f in bm.faces if f.select]
+            selected_verts = [v for v in bm.verts if v.select]
+            
+            
+            if len(selected_verts) > 1:
+                row_label(self,"Vertex info","PIVOT_CURSOR")
+                
+                if (loc := get_average_location_of_selected_verts()): 
+                    row_label(self, f"Ave. loc: X:{loc.x:.2f}, Y:{loc.y:.2f}, Z:{loc.z:.2f}")
+            
+                #row_op(self,OpShowAverageLocationOfSelectedVerts)
+
+                if len(selected_faces) > 0:
+                    pass
+
+            if len(selected_verts) == 1:
+                row_label(self,"Vertex info","PIVOT_CURSOR")
+                loc = get_active_vertex_location()
+                row_label(self,f"loc: X:{loc.x:.2f}, Y:{loc.y:.2f}, Z:{loc.z:.2f}")
+
+class UIToolBox(bpy.types.Panel):
+    bl_label = "KigLand - Components"
     bl_idname = "OBJECT_PT_kigland_toolbox"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'KigLand Toolbox'
 
     def draw(self, context):
-        # Env settings
-        row_label(self,"Env init","OPTIONS")
-        row_op(self,OpInitEnvUnitSettings)
-        
-        row_label(self,"Components","MESH_MONKEY")
+        layout = self.layout
+
         row_op(self,OpGenLogo)
         row_op(self,OpGenEars)
         row_op(self,OpGenLockComponents)
+        
+        layout.separator()
+        layout.separator()
 
         # Order ID
-        row_label(self,"Order Id","LINENUMBERS_ON")
+        row_label(self,"Order Labels & Order Id","LINENUMBERS_ON")
         row_prop(self,context.scene.text_tool,"user_input_order_id")
         row_prop(self,context.scene.text_tool, "gen_full_order_id_label")
         row_op(self,OpGenOrderIdLabel)
+        
+        
 
         # if in edit mode, show the active vertex location
         if bpy.context.mode == 'EDIT_MESH':
@@ -421,21 +443,29 @@ class UIGenLogo(bpy.types.Panel):
 
             selected_faces = [f for f in bm.faces if f.select]
             selected_verts = [v for v in bm.verts if v.select]
-
+            
             if len(selected_verts) > 1:
-                row_label(self,"On Selected multiple vertices","OUTLINER_DATA_MESH")
-                row_op(self,OpShowAverageLocationOfSelectedVerts)
-
+                # 
                 if len(selected_faces) > 0:
                     row_label(self,"On Selected Face","FACE_MAPS")
                     row_op(self,OpGenLogoAndMoveToSelectedVerteces)
+                    row_op(self,OpGenOrderIdLabel)
 
             if len(selected_verts) == 1:
-                row_label(self,"On Selected single vertex","DECORATE")
-                row_op(OpShowActiveVertexLocation)
+                pass
+
+class UIBodyData(bpy.types.Panel):
+    bl_label = "KigLand - Body & Head"
+    bl_idname = "OBJECT_PT_kigland_toolbox_body_and_head"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'KigLand Toolbox'
+    
+    def draw(self, context):
+        layout = self.layout
         
-        # Head model
         head_data = context.scene.head_data
+
         row_label(self,"Head Model (mm)","COMMUNITY")
         row_prop(self,head_data, "head_height")
         row_prop(self,head_data, "head_width")
@@ -445,8 +475,19 @@ class UIGenLogo(bpy.types.Panel):
         row_prop(self,head_data, "eyes_width")
         row_prop(self,head_data, "padding_fill_thickness")
         
+
+class UIDangerOp(bpy.types.Panel):
+    bl_label = "KigLand - Danger Op"
+    bl_idname = "OBJECT_PT_kigland_danger_op"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'KigLand Toolbox'
+    
+    def draw(self, context):
+        layout = self.layout
+        
         # Dangerous
-        row_label(self,"Dangerous","ERROR")
+        row_label(self,"Before apply Modifier","ERROR")
         row_op(self,OpRemoveObjectAllVertexGroups)
         row_op(self,OpRemoveObjectAllShapeKeys)
         row_op(self,OpApplyShapekeys)
