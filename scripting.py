@@ -61,12 +61,12 @@ class PropsRealHeadSizes(bpy.types.PropertyGroup):
 
     head_height: bpy.props.FloatProperty(
         name="Head Height",
-        default=230.0
+        default=240.0
     )
 
     head_width: bpy.props.FloatProperty(
         name="Head Width",
-        default=120.0
+        default=180.0
     )
 
     head_circumference: bpy.props.FloatProperty(
@@ -762,17 +762,17 @@ def unregister():
     del bpy.types.Scene.head_data
 
 
-addon_name = __name__.partition('.')[0]
+# addon_name = __name__.partition('.')[0]
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    # in scripting mode
+#     # in scripting mode
 
-    register()
+#     register()
 
-    if addon_name in sys.modules:
-        unregister()
+#     if addon_name in sys.modules:
+#         unregister()
 
-    register()
+#     register()
 
-    # unregister()
+#     # unregister()

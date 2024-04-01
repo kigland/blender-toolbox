@@ -1,3 +1,5 @@
+from . import scripting
+
 bl_info = {
     "name": "Kigland Toolbox",
     "blender": (4, 0, 0),
@@ -5,10 +7,14 @@ bl_info = {
     "author": "Kig.Land",
     "version": (0, 1, 0),
     "location": "3D Viewport > Object",
-    "description": "",
+    "description": "Tool box for kigland workshop",
     "warning": "",
     "doc_url": "https://github.com/kigland/blender-toolbox",
 }
 
-# TODO: Wait for it to be wrapped into a plugin here
-#       Now , code just work in scripting mode 
+# blender register
+def register():
+    scripting.register()
+
+def unregister():
+    scripting.unregister()
