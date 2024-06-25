@@ -11,6 +11,46 @@ import sys
 S3_BUCKET = "https://s3.kigland.cn/blender"
 
 
+def clean_float(value: float, precision: int = 0) -> str:
+    # Avoid scientific notation and strip trailing zeros: 0.000 -> 0.0
+
+    text = f"{value:.{precision}f}"
+    index = text.rfind(".")
+
+    if index != -1:
+        index += 2
+        head, tail = text[:index], text[index:]
+        tail = tail.rstrip("0")
+        text = head + tail
+
+    return text
+
+
+def get_unit(unit_system: str, unit: str) -> tuple[float, str]:
+    # Returns unit length relative to meter and unit symbol
+
+    units = {
+        "METRIC": {
+            "KILOMETERS": (1000.0, "km"),
+            "METERS": (1.0, "m"),
+            "CENTIMETERS": (0.01, "cm"),
+            "MILLIMETERS": (0.001, "mm"),
+            "MICROMETERS": (0.000001, "µm"),
+        },
+        "IMPERIAL": {
+            "MILES": (1609.344, "mi"),
+            "FEET": (0.3048, "\'"),
+            "INCHES": (0.0254, "\""),
+            "THOU": (0.0000254, "thou"),
+        },
+    }
+
+    try:
+        return units[unit_system][unit]
+    except KeyError:
+        fallback_unit = "CENTIMETERS" if unit_system == "METRIC" else "INCHES"
+        return units[unit_system][fallback_unit]
+
 class PropsTextOrderId(bpy.types.PropertyGroup):
     user_input_order_id: bpy.props.StringProperty(
         name="Order ID",
@@ -113,6 +153,37 @@ class PropsRealHeadSizes(bpy.types.PropertyGroup):
         name="Padding thickness",
         default=35.0
     )
+
+class CostMonitor(bpy.types.PropertyGroup):
+    # unit 1.34 g/cm^3
+    density: bpy.props.FloatProperty(
+        name="Density",
+        default=1.13
+    )
+
+    material_cost: bpy.props.FloatProperty(
+        name="Material Cost",
+        default=0.35
+    )
+
+    selected_object_info:  bpy.props.StringProperty(
+        name="Selected Object Info",
+        default="No Object Selected"
+    )
+
+    volume: bpy.props.StringProperty(
+        name="Volume",
+        default="0.0"
+    )
+
+    cost: bpy.props.StringProperty(
+        name="Cost",
+        default="0.0 CNY"
+    )
+    weight: bpy.props.StringProperty (
+        name="Weight",
+        default="0 g"
+    )    
 
 
 def download_file_and_load(url, temp_dir, blend_filename):
@@ -474,6 +545,7 @@ class UIEnv(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'KigLand Toolbox'
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         row_label(self, "Env init", "OPTIONS")
@@ -486,6 +558,7 @@ class UIInfoState(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'KigLand Toolbox'
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         if bpy.context.mode == 'EDIT_MESH':
@@ -520,6 +593,7 @@ class UIToolBox(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'KigLand Toolbox'
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -564,6 +638,7 @@ class UIBodyData(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'KigLand Toolbox'
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -713,6 +788,7 @@ class UIDangerOp(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'KigLand Toolbox'
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -723,7 +799,111 @@ class UIDangerOp(bpy.types.Panel):
         row_op(self, OpRemoveObjectAllShapeKeys)
         row_op(self, OpApplyShapekeys)
 
+def bmesh_copy_from_object(obj, transform=True, triangulate=True, apply_modifiers=False):
+    """Returns a transformed, triangulated copy of the mesh"""
 
+    assert obj.type == 'MESH'
+
+    if apply_modifiers and obj.modifiers:
+        import bpy
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        obj_eval = obj.evaluated_get(depsgraph)
+        me = obj_eval.to_mesh()
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        obj_eval.to_mesh_clear()
+    else:
+        me = obj.data
+        if obj.mode == 'EDIT':
+            bm_orig = bmesh.from_edit_mesh(me)
+            bm = bm_orig.copy()
+        else:
+            bm = bmesh.new()
+            bm.from_mesh(me)
+
+    # TODO. remove all customdata layers.
+    # would save ram
+
+    if transform:
+        matrix = obj.matrix_world.copy()
+        if not matrix.is_identity:
+            bm.transform(matrix)
+            # Update normals if the matrix has no rotation.
+            matrix.translation.zero()
+            if not matrix.is_identity:
+                bm.normal_update()
+
+    if triangulate:
+        bmesh.ops.triangulate(bm, faces=bm.faces)
+
+    return bm
+
+class OpGenCost(bpy.types.Operator):
+    bl_idname = "object.gen_cost"
+    bl_label = "Gen Cost"
+
+    def execute(self, context):
+        
+        cost_monitor = context.scene.cost_monitor
+        
+        scene = context.scene
+        unit = scene.unit_settings
+        scale = 1.0 if unit.system == 'NONE' else unit.scale_length
+        obj = context.active_object
+
+        bm = bmesh_copy_from_object(obj, apply_modifiers=True)
+        volume = bm.calc_volume()
+        bm.free()
+        volume_fmt = ""
+        if unit.system == 'NONE':
+            volume_fmt = clean_float(volume, 8)
+        else:
+            length, symbol = get_unit(unit.system, unit.length_unit)
+            volume_unit = volume * (scale ** 3.0) / (length ** 3.0)
+            
+
+            volume_str = clean_float(volume_unit, 4)
+            volume_fmt = f"{volume_str} {symbol}³"
+
+            volume_cm3 = volume * (scale ** 3.0) / (0.01 ** 3.0)
+            weight = volume_cm3 * cost_monitor.density
+            weight_fmt = clean_float(weight,2)
+            weight_str = f"{weight_fmt} g"
+            cost = volume_cm3 * cost_monitor.density * cost_monitor.material_cost
+            cost_fmt = clean_float(cost, 2)
+            cost_str = f"{cost_fmt} CNY"
+            
+            cost_monitor.selected_object_info = f"{volume_fmt} -> {cost_str}"
+            cost_monitor.volume = volume_fmt
+            cost_monitor.cost = cost_str
+            cost_monitor.weight = weight_str
+        return {'FINISHED'}
+
+class UICosts(bpy.types.Panel):
+    bl_label = "KigLand - Costs Monitor"
+    bl_idname = "OBJECT_PT_kigland_costs_op"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'KigLand Toolbox'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        cost_monitor = context.scene.cost_monitor
+
+        row_label(self, "Material Costs", "MATERIAL")
+        row_prop(self, cost_monitor, "density")
+        row_prop(self, cost_monitor, "material_cost")
+        
+        row_label(self, "Total Costs", "RNA")
+        row_prop(self, cost_monitor, "volume")
+        row_prop(self, cost_monitor, "cost")
+        row_prop(self, cost_monitor, "weight")
+        row_op(self, OpGenCost)
+        row_label(self, "Base Price (Supports Excluded)")
+
+            
 blender_classes = (
     bpy.types.Operator,
     bpy.types.Panel,
@@ -751,6 +931,8 @@ def register():
         type=PropsRealHeadSizes)
     bpy.types.Scene.text_tool = bpy.props.PointerProperty(
         type=PropsTextOrderId)
+    bpy.types.Scene.cost_monitor = bpy.props.PointerProperty(
+        type=CostMonitor)
 
 
 def unregister():
@@ -760,6 +942,7 @@ def unregister():
     # props
     del bpy.types.Scene.text_tool
     del bpy.types.Scene.head_data
+    del bpy.types.Scene.cost_monitor
 
 
 # addon_name = __name__.partition('.')[0]
