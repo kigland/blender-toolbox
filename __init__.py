@@ -5,7 +5,7 @@ bl_info = {
     "blender": (4, 0, 0),
     "category": "View3D",
     "author": "Kig.Land",
-    "version": (0, 1, 0),
+    "version": (0, 1, 1),
     "location": "3D Viewport > Object",
     "description": "Tool box for kigland workshop",
     "warning": "",
